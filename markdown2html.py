@@ -1,6 +1,10 @@
 #!/usr/bin/python3
 """Markdown to html module"""
 
+from os.path import isfile
+from re import search
+from sys import argv, stderr
+
 
 def check_headings(string):
     """add headings function"""
@@ -52,34 +56,49 @@ def list_wrapper(str_lst, ulol):
     return result
 
 
-if __name__ == '__main__':
-    from os.path import isfile
-    from sys import argv, stderr
+def paragraph(file):
+    """Set html <p> paragraph"""
+    p = True
+    for line in range(len(file)):
+        is_empty = file[line].isspace()
+        is_html = search(r'<\/?[a-z][\s\S]*>', file[line])
+        if p and not is_html and not is_empty:
+            file[line] = f'<p>\n{file[line]}'
+            p = False
+        elif (is_html or is_empty) and not p:
+            file[line] = f'</p>\n{file[line]}'
+            p = True
+        elif not is_empty and not is_html and not p:
+            file[line] = f'<br/>\n{file[line]}'
+    if not p:
+        file.append('</p>')
+    return file
 
+
+def main():
+    """Entry point"""
     if len(argv) != 3:
         stderr.write("Usage: ./markdown2html.py README.md README.html\n")
         exit(1)
-
     md_file = argv[1]
     if not isfile(f"./{md_file}"):
         stderr.write(f"Missing {md_file}\n")
         exit(1)
-
     html_file = argv[2]
     temp_file = []
     with open(f"./{md_file}", 'r') as f:
         for line in f.readlines():
-            if not line.isspace():
-                temp_file.append(
-                    check_headings(
-                        html_list(html_list(line, "uli"), "oli")
-                    )
-                )
-
+            temp_file.append(
+                check_headings(
+                    html_list(html_list(line, "uli"), "oli")))
+    temp_file = list_wrapper(list_wrapper(temp_file, 'ul'), 'ol')
+    temp_file = paragraph(temp_file)
     with open(f"./{html_file}", 'w') as html:
-        html.writelines(list_wrapper(list_wrapper(
-            temp_file, 'ul'), 'ol')
-        )
+        a = list(filter(lambda x: not x.isspace(), temp_file))
+        html.writelines(a)
         html.write('\n')
-
     exit(0)
+
+
+if __name__ == '__main__':
+    main()
